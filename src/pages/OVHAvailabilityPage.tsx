@@ -433,16 +433,26 @@ const OVHAvailabilityPage = () => {
               className="cyber-input w-full"
             >
               <option value="all">所有数据中心</option>
-              <option value="rbx">RBX - 法国鲁贝</option>
-              <option value="sbg">SBG - 法国斯特拉斯堡</option>
-              <option value="gra">GRA - 法国格拉沃利纳</option>
-              <option value="bhs">BHS - 加拿大蒙特利尔</option>
-              <option value="sgp">SGP - 新加坡</option>
-              <option value="syd">SYD - 澳大利亚悉尼</option>
-              <option value="ynm">YNM - 印度孟买</option>
-              <option value="waw">WAW - 波兰华沙</option>
-              <option value="fra">FRA - 德国法兰克福</option>
-              <option value="lon">LON - 英国伦敦</option>
+              <optgroup label="🇪🇺 欧洲">
+                <option value="rbx">RBX - 法国鲁贝</option>
+                <option value="sbg">SBG - 法国斯特拉斯堡</option>
+                <option value="gra">GRA - 法国格拉沃利纳</option>
+                <option value="waw">WAW - 波兰华沙</option>
+                <option value="fra">FRA - 德国法兰克福</option>
+                <option value="lon">LON - 英国伦敦</option>
+              </optgroup>
+              <optgroup label="🇺🇸 美国">
+                <option value="hil">HIL - 美国俄勒冈州</option>
+                <option value="vin">VIN - 美国弗吉尼亚州</option>
+              </optgroup>
+              <optgroup label="🇨🇦 加拿大">
+                <option value="bhs">BHS - 加拿大蒙特利尔</option>
+              </optgroup>
+              <optgroup label="🌏 亚太">
+                <option value="sgp">SGP - 新加坡</option>
+                <option value="syd">SYD - 澳大利亚悉尼</option>
+                <option value="ynm">YNM - 印度孟买</option>
+              </optgroup>
             </select>
             
             {/* 可用性过滤 */}
