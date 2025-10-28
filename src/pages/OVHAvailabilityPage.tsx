@@ -4,12 +4,16 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Search, Database, Filter, Download, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import axios from 'axios';
+import apiClient from '@/utils/apiClient';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 /**
  * OVH 数据中心可用性查询页面
  * 直接调用 OVH 公开 API（无需认证）
- * https://eu.api.ovh.com/v1/dedicated/server/datacenter/availabilities
+ * 根据后端配置的 endpoint 自动选择对应的区域 API：
+ * - EU: https://eu.api.ovh.com/v1/dedicated/server/datacenter/availabilities
+ * - US: https://api.us.ovhcloud.com/v1/dedicated/server/datacenter/availabilities
+ * - CA: https://ca.api.ovh.com/v1/dedicated/server/datacenter/availabilities
  */
 
 interface DatacenterInfo {
@@ -31,6 +35,9 @@ const OVHAvailabilityPage = () => {
   const isMobile = useIsMobile();
   const [availabilities, setAvailabilities] = useState<AvailabilityItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isConfigLoading, setIsConfigLoading] = useState(true); // 配置加载状态
+  const [endpoint, setEndpoint] = useState<string>('');
+  const [apiBaseUrl, setApiBaseUrl] = useState<string>('');
   
   // 搜索和过滤
   const [searchTerm, setSearchTerm] = useState('');
@@ -61,17 +68,32 @@ const OVHAvailabilityPage = () => {
     setCurrentPage(1);
   }, [filterDatacenter, filterAvailability, filterMemory, sortBy, sortOrder]);
 
-  // OVH API 端点
-  const OVH_API_URL = 'https://eu.api.ovh.com/v1/dedicated/server/datacenter/availabilities';
+  // 根据 endpoint 获取对应的 API 基础地址
+  const getApiBaseUrl = (endpoint: string): string => {
+    switch (endpoint) {
+      case 'ovh-us':
+        return 'https://api.us.ovhcloud.com';
+      case 'ovh-ca':
+        return 'https://ca.api.ovh.com';
+      case 'ovh-eu':
+      default:
+        return 'https://eu.api.ovh.com';
+    }
+  };
 
   // 获取所有可用性数据
-  const fetchAvailabilities = async () => {
+  const fetchAvailabilities = useCallback(async () => {
+    if (!apiBaseUrl) return;
+    
     setIsLoading(true);
     try {
+      const apiUrl = `${apiBaseUrl}/v1/dedicated/server/datacenter/availabilities`;
       toast.info('正在从 OVH 公开 API 获取数据...', { duration: 2000 });
       
+      console.log(`正在从 ${apiUrl} 获取数据...`);
+      
       // 直接调用 OVH 公开 API（无需认证）
-      const response = await axios.get(OVH_API_URL, {
+      const response = await axios.get(apiUrl, {
         timeout: 30000
       });
       
@@ -92,12 +114,39 @@ const OVHAvailabilityPage = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [apiBaseUrl]);
 
-  // 初始加载
-  useEffect(() => {
-    fetchAvailabilities();
+  // 获取 endpoint 配置
+  const fetchEndpointConfig = useCallback(async () => {
+    setIsConfigLoading(true);
+    try {
+      const response = await apiClient.get('/endpoint-config');
+      const configEndpoint = response.data.endpoint || 'ovh-eu';
+      setEndpoint(configEndpoint);
+      const baseUrl = getApiBaseUrl(configEndpoint);
+      setApiBaseUrl(baseUrl);
+      console.log(`✅ 使用 OVH API: ${configEndpoint} - ${baseUrl}`);
+    } catch (error) {
+      console.error('获取 endpoint 配置失败，使用默认值 ovh-eu:', error);
+      setEndpoint('ovh-eu');
+      setApiBaseUrl('https://eu.api.ovh.com');
+      toast.error('获取区域配置失败，使用默认欧洲区域');
+    } finally {
+      setIsConfigLoading(false);
+    }
   }, []);
+
+  // 初始加载：先获取 endpoint 配置，再获取数据
+  useEffect(() => {
+    fetchEndpointConfig();
+  }, [fetchEndpointConfig]);
+
+  // 当 apiBaseUrl 改变时，获取数据
+  useEffect(() => {
+    if (apiBaseUrl) {
+      fetchAvailabilities();
+    }
+  }, [apiBaseUrl, fetchAvailabilities]);
 
   // 使用useMemo优化过滤和排序
   const filteredData = useMemo(() => {
@@ -292,21 +341,41 @@ const OVHAvailabilityPage = () => {
         <div className="flex items-start gap-3">
           <Database className="w-5 h-5 text-cyan-400 mt-0.5" />
           <div className="flex-1">
-            <h3 className="font-semibold text-cyan-400 mb-2">OVH 公开 API</h3>
-            <div className="space-y-1 text-sm">
-              <div className="flex items-start gap-2">
-                <span className="text-cyber-muted min-w-[60px]">端点：</span>
-                <code className="text-cyan-400 bg-cyber-grid/50 px-2 py-0.5 rounded text-xs break-all">
-                  {OVH_API_URL}
-                </code>
+            {isConfigLoading ? (
+              <div className="flex items-center gap-2">
+                <div className="animate-spin w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full"></div>
+                <span className="text-cyber-muted text-sm">正在加载区域配置...</span>
               </div>
-              <div className="flex items-start gap-2">
-                <span className="text-cyber-muted min-w-[60px]">说明：</span>
-                <span className="text-slate-300">
-                  此 API 无需认证，实时返回所有 OVH 专用服务器在各数据中心的库存状态
-                </span>
-              </div>
-            </div>
+            ) : (
+              <>
+                <h3 className="font-semibold text-cyan-400 mb-2 flex items-center gap-2">
+                  OVH 公开 API
+                  <span className="text-xs px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300">
+                    {endpoint === 'ovh-us' ? '🇺🇸 美国' : endpoint === 'ovh-ca' ? '🇨🇦 加拿大' : '🇪🇺 欧洲'}
+                  </span>
+                </h3>
+                <div className="space-y-1 text-sm">
+                  <div className="flex items-start gap-2">
+                    <span className="text-cyber-muted min-w-[60px]">端点：</span>
+                    <code className="text-cyan-400 bg-cyber-grid/50 px-2 py-0.5 rounded text-xs break-all">
+                      {apiBaseUrl}/v1/dedicated/server/datacenter/availabilities
+                    </code>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-cyber-muted min-w-[60px]">区域：</span>
+                    <span className="text-slate-300">
+                      {endpoint === 'ovh-us' ? '美国 (US)' : endpoint === 'ovh-ca' ? '加拿大 (CA)' : '欧洲 (EU)'}
+                    </span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-cyber-muted min-w-[60px]">说明：</span>
+                    <span className="text-slate-300">
+                      此 API 无需认证，实时返回所有 OVH 专用服务器在各数据中心的库存状态
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

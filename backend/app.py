@@ -2172,6 +2172,17 @@ def verify_auth():
         add_log("ERROR", f"Authentication verification failed: {str(e)}")
         return jsonify({"valid": False})
 
+@app.route('/api/endpoint-config', methods=['OPTIONS', 'GET'])
+def get_endpoint_config():
+    """获取当前的 OVH API endpoint 配置"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    return jsonify({
+        "endpoint": config.get("endpoint", "ovh-eu"),
+        "zone": config.get("zone", "IE")
+    })
+
 @app.route('/api/logs', methods=['GET'])
 def get_logs():
     # 先刷新日志到文件，确保返回最新数据
