@@ -1722,8 +1722,8 @@ const ServersPage = () => {
             <AlertDialogTitle className="text-cyber-accent text-lg font-bold">
               批量添加监控
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-200">
-              <div className="space-y-3 mt-2">
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 mt-2 text-slate-200">
                 <p className="text-base font-medium text-white">
                   确定要将所有 {servers.length} 台服务器添加到监控吗？
                 </p>

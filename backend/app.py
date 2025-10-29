@@ -2451,27 +2451,6 @@ def add_subscription():
     add_log("INFO", f"添加服务器订阅: {plan_code} ({server_name or '未知名称'})")
     return jsonify({"status": "success", "message": f"已订阅 {plan_code}"})
 
-@app.route('/api/monitor/subscriptions/<plan_code>', methods=['DELETE'])
-def remove_subscription(plan_code):
-    """删除订阅"""
-    success = monitor.remove_subscription(plan_code)
-    
-    if success:
-        save_subscriptions()
-        add_log("INFO", f"删除服务器订阅: {plan_code}")
-        return jsonify({"status": "success", "message": f"已取消订阅 {plan_code}"})
-    else:
-        return jsonify({"status": "error", "message": "订阅不存在"}), 404
-
-@app.route('/api/monitor/subscriptions/clear', methods=['DELETE'])
-def clear_subscriptions():
-    """清空所有订阅"""
-    count = monitor.clear_subscriptions()
-    save_subscriptions()
-    
-    add_log("INFO", f"清空所有订阅 ({count} 项)")
-    return jsonify({"status": "success", "count": count, "message": f"已清空 {count} 个订阅"})
-
 @app.route('/api/monitor/subscriptions/batch-add-all', methods=['OPTIONS', 'POST'])
 def batch_add_all_servers():
     """批量添加所有服务器到监控（全机房监控）"""
@@ -2546,6 +2525,27 @@ def batch_add_all_servers():
         "errors": errors,
         "message": message
     })
+
+@app.route('/api/monitor/subscriptions/<plan_code>', methods=['DELETE'])
+def remove_subscription(plan_code):
+    """删除订阅"""
+    success = monitor.remove_subscription(plan_code)
+    
+    if success:
+        save_subscriptions()
+        add_log("INFO", f"删除服务器订阅: {plan_code}")
+        return jsonify({"status": "success", "message": f"已取消订阅 {plan_code}"})
+    else:
+        return jsonify({"status": "error", "message": "订阅不存在"}), 404
+
+@app.route('/api/monitor/subscriptions/clear', methods=['DELETE'])
+def clear_subscriptions():
+    """清空所有订阅"""
+    count = monitor.clear_subscriptions()
+    save_subscriptions()
+    
+    add_log("INFO", f"清空所有订阅 ({count} 项)")
+    return jsonify({"status": "success", "count": count, "message": f"已清空 {count} 个订阅"})
 
 @app.route('/api/monitor/subscriptions/<plan_code>/history', methods=['GET'])
 def get_subscription_history(plan_code):
