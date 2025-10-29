@@ -102,6 +102,9 @@ const SettingsPage = () => {
       // 1. 先保存网站安全密钥到 localStorage（这个总是要保存的）
       setApiSecretKey(formValues.apiSecretKey);
       
+      // 等待一下确保 localStorage 写入完成
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       // 2. 检查是否填写了 OVH API 配置
       const hasOVHConfig = formValues.appKey && formValues.appSecret && formValues.consumerKey;
       
