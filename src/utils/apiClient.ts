@@ -89,12 +89,29 @@ apiClient.interceptors.response.use(
         case 404:
           // 404完全静默，让各组件自行处理
           // 因为404可能是正常情况（如：检查安装进度时没有进行中的安装）
+          // 或者服务器不支持某些功能（notAvailable标志）
+          const notAvailable404 = (error.response.data as any)?.notAvailable;
+          if (!notAvailable404) {
+            // 只有非notAvailable的404才可能记录（但通常也静默）
+          }
+          break;
+        case 400:
+          // 400错误：检查是否是"功能不支持"的情况
+          const notAvailable400 = (error.response.data as any)?.notAvailable;
+          if (!notAvailable400) {
+            // 只有非notAvailable的400才显示错误
+            const message = (error.response.data as any)?.error || error.message;
+            console.error(`API错误 [400]:`, message);
+          }
+          // notAvailable的400静默处理，让组件自行显示友好提示
           break;
         case 500:
           toast.error('服务器错误');
           break;
         default:
-          console.error(`API错误 [${status}]:`, message);
+          // 其他状态码才输出错误
+          const defaultMessage = (error.response.data as any)?.error || error.message;
+          console.error(`API错误 [${status}]:`, defaultMessage);
       }
     } else if (error.request) {
       console.error('网络错误:', error.request);

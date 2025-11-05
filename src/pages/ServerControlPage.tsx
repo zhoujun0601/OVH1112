@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "@/utils/apiClient";
 import { useToast } from "../components/ToastContainer";
-import { Server, RefreshCw, Power, HardDrive, X, AlertCircle, Activity, Cpu, Wifi, Calendar, Monitor, Mail, BarChart3, Check, Cog } from "lucide-react";
+import { Server, RefreshCw, Power, HardDrive, X, AlertCircle, Activity, Cpu, Wifi, Calendar, Monitor, Mail, BarChart3, Check, Cog, Zap, Shield, Database, Globe, Network, Settings } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -319,6 +319,49 @@ const ServerControlPage: React.FC = () => {
   const [networkSpecs, setNetworkSpecs] = useState<NetworkSpecs | null>(null);
   const [loadingNetworkSpecs, setLoadingNetworkSpecs] = useState(false);
   const [showNetworkSpecsDialog, setShowNetworkSpecsDialog] = useState(false);
+
+  // 高级功能管理
+  const [showAdvancedDialog, setShowAdvancedDialog] = useState(false);
+  const [advancedTab, setAdvancedTab] = useState<'burst' | 'firewall' | 'backup' | 'dns' | 'vmac' | 'vrack' | 'orderable' | 'options' | 'ip'>('burst');
+  
+  // Burst突发带宽
+  const [burst, setBurst] = useState<any>(null);
+  const [loadingBurst, setLoadingBurst] = useState(false);
+  
+  // Firewall防火墙
+  const [firewall, setFirewall] = useState<any>(null);
+  const [loadingFirewall, setLoadingFirewall] = useState(false);
+  
+  // Backup FTP
+  const [backupFtp, setBackupFtp] = useState<any>(null);
+  const [backupFtpAccess, setBackupFtpAccess] = useState<any[]>([]);
+  const [loadingBackupFtp, setLoadingBackupFtp] = useState(false);
+  
+  // Secondary DNS
+  const [secondaryDns, setSecondaryDns] = useState<any[]>([]);
+  const [loadingSecondaryDns, setLoadingSecondaryDns] = useState(false);
+  
+  // Virtual MAC
+  const [virtualMacs, setVirtualMacs] = useState<any[]>([]);
+  const [loadingVirtualMacs, setLoadingVirtualMacs] = useState(false);
+  
+  // vRack
+  const [vracks, setVracks] = useState<any[]>([]);
+  const [loadingVracks, setLoadingVracks] = useState(false);
+  
+  // Orderable Services
+  const [orderableBandwidth, setOrderableBandwidth] = useState<any>(null);
+  const [orderableTraffic, setOrderableTraffic] = useState<any>(null);
+  const [orderableIp, setOrderableIp] = useState<any>(null);
+  const [loadingOrderable, setLoadingOrderable] = useState(false);
+  
+  // Options
+  const [serverOptions, setServerOptions] = useState<any[]>([]);
+  const [loadingOptions, setLoadingOptions] = useState(false);
+  
+  // IP Specs
+  const [ipSpecs, setIpSpecs] = useState<any>(null);
+  const [loadingIpSpecs, setLoadingIpSpecs] = useState(false);
 
   // 加载 BIOS 设置
   const fetchBiosSettings = async () => {
@@ -1200,6 +1243,230 @@ const ServerControlPage: React.FC = () => {
     fetchNetworkSpecs(server.serviceName);
   };
 
+  // 打开高级功能对话框
+  const handleOpenAdvanced = (server: ServerInfo, tab: string = 'burst') => {
+    setSelectedServer(server);
+    setAdvancedTab(tab as any);
+    setShowAdvancedDialog(true);
+    // 根据标签加载相应数据
+    if (tab === 'burst') fetchBurst(server.serviceName);
+    else if (tab === 'firewall') fetchFirewall(server.serviceName);
+    else if (tab === 'backup') fetchBackupFtp(server.serviceName);
+    else if (tab === 'dns') fetchSecondaryDns(server.serviceName);
+    else if (tab === 'vmac') fetchVirtualMacs(server.serviceName);
+    else if (tab === 'vrack') fetchVracks(server.serviceName);
+    else if (tab === 'orderable') fetchOrderable(server.serviceName);
+    else if (tab === 'options') fetchServerOptions(server.serviceName);
+    else if (tab === 'ip') fetchIpSpecs(server.serviceName);
+  };
+
+  // 获取Burst突发带宽
+  const fetchBurst = async (serviceName: string) => {
+    setLoadingBurst(true);
+    try {
+      const response = await api.get(`/server-control/${serviceName}/burst`);
+      if (response.data.success) {
+        setBurst(response.data.burst);
+      } else if (response.data.notAvailable) {
+        setBurst({ notAvailable: true, error: response.data.error });
+      }
+    } catch (error: any) {
+      if (error?.response?.status === 404 && error?.response?.data?.notAvailable) {
+        // 服务器不支持此功能，这是正常情况，不记录错误
+        setBurst({ notAvailable: true, error: error.response.data.error });
+      } else {
+        // 真正的错误才记录到控制台
+        console.error('获取突发带宽失败:', error);
+        setBurst(null);
+      }
+    } finally {
+      setLoadingBurst(false);
+    }
+  };
+
+  // 更新Burst状态
+  const updateBurstStatus = async (status: string) => {
+    if (!selectedServer) return;
+    try {
+      const response = await api.put(`/server-control/${selectedServer.serviceName}/burst`, { status });
+      if (response.data.success) {
+        showToast({ type: 'success', title: '突发带宽状态已更新' });
+        fetchBurst(selectedServer.serviceName);
+      }
+    } catch (error: any) {
+      showToast({ type: 'error', title: '更新失败', message: error.message });
+    }
+  };
+
+  // 获取Firewall防火墙
+  const fetchFirewall = async (serviceName: string) => {
+    setLoadingFirewall(true);
+    try {
+      const response = await api.get(`/server-control/${serviceName}/firewall`);
+      if (response.data.success) {
+        setFirewall(response.data.firewall);
+      } else if (response.data.notAvailable) {
+        setFirewall({ notAvailable: true, error: response.data.error });
+      }
+    } catch (error: any) {
+      if (error?.response?.status === 404 && error?.response?.data?.notAvailable) {
+        // 服务器不支持此功能，这是正常情况，不记录错误
+        setFirewall({ notAvailable: true, error: error.response.data.error });
+      } else {
+        // 真正的错误才记录到控制台
+        console.error('获取防火墙失败:', error);
+        setFirewall(null);
+      }
+    } finally {
+      setLoadingFirewall(false);
+    }
+  };
+
+  // 更新Firewall状态
+  const updateFirewallStatus = async (enabled: boolean) => {
+    if (!selectedServer) return;
+    try {
+      const response = await api.put(`/server-control/${selectedServer.serviceName}/firewall`, { enabled });
+      if (response.data.success) {
+        showToast({ type: 'success', title: `防火墙已${enabled ? '启用' : '禁用'}` });
+        fetchFirewall(selectedServer.serviceName);
+      }
+    } catch (error: any) {
+      showToast({ type: 'error', title: '更新失败', message: error.message });
+    }
+  };
+
+  // 获取Backup FTP
+  const fetchBackupFtp = async (serviceName: string) => {
+    setLoadingBackupFtp(true);
+    try {
+      const response = await api.get(`/server-control/${serviceName}/backup-ftp`);
+      if (response.data.success) {
+        setBackupFtp(response.data.backupFtp);
+        // 获取访问列表（如果备份FTP已激活）
+        try {
+          const accessResp = await api.get(`/server-control/${serviceName}/backup-ftp/access`);
+          if (accessResp.data.success) {
+            setBackupFtpAccess(accessResp.data.accessList || []);
+          }
+        } catch (accessError: any) {
+          // 访问列表获取失败不影响主功能
+          setBackupFtpAccess([]);
+        }
+      } else if (response.data.notAvailable) {
+        setBackupFtp({ notAvailable: true, error: response.data.error });
+      }
+    } catch (error: any) {
+      if (error?.response?.status === 404 && error?.response?.data?.notAvailable) {
+        // 服务器不支持此功能，这是正常情况
+        setBackupFtp({ notAvailable: true, error: error.response.data.error });
+      } else if (error?.response?.status === 404 && error?.response?.data?.notActivated) {
+        // 备份FTP未激活，这也是正常情况
+        setBackupFtp({ notActivated: true });
+      } else {
+        // 真正的错误才记录到控制台
+        console.error('获取备份FTP失败:', error);
+        setBackupFtp(null);
+      }
+    } finally {
+      setLoadingBackupFtp(false);
+    }
+  };
+
+  // 获取Secondary DNS
+  const fetchSecondaryDns = async (serviceName: string) => {
+    setLoadingSecondaryDns(true);
+    try {
+      const response = await api.get(`/server-control/${serviceName}/secondary-dns`);
+      if (response.data.success) {
+        setSecondaryDns(response.data.domains || []);
+      }
+    } catch (error: any) {
+      console.error('获取从DNS失败:', error);
+    } finally {
+      setLoadingSecondaryDns(false);
+    }
+  };
+
+  // 获取Virtual MAC
+  const fetchVirtualMacs = async (serviceName: string) => {
+    setLoadingVirtualMacs(true);
+    try {
+      const response = await api.get(`/server-control/${serviceName}/virtual-mac`);
+      if (response.data.success) {
+        setVirtualMacs(response.data.virtualMacs || []);
+      }
+    } catch (error: any) {
+      console.error('获取虚拟MAC失败:', error);
+    } finally {
+      setLoadingVirtualMacs(false);
+    }
+  };
+
+  // 获取vRack列表
+  const fetchVracks = async (serviceName: string) => {
+    setLoadingVracks(true);
+    try {
+      const response = await api.get(`/server-control/${serviceName}/vrack`);
+      if (response.data.success) {
+        setVracks(response.data.vracks || []);
+      }
+    } catch (error: any) {
+      console.error('获取vRack列表失败:', error);
+    } finally {
+      setLoadingVracks(false);
+    }
+  };
+
+  // 获取可订购服务
+  const fetchOrderable = async (serviceName: string) => {
+    setLoadingOrderable(true);
+    try {
+      const [bandwidthResp, trafficResp, ipResp] = await Promise.all([
+        api.get(`/server-control/${serviceName}/orderable/bandwidth`).catch(() => ({ data: { success: false } })),
+        api.get(`/server-control/${serviceName}/orderable/traffic`).catch(() => ({ data: { success: false } })),
+        api.get(`/server-control/${serviceName}/orderable/ip`).catch(() => ({ data: { success: false } }))
+      ]);
+      if (bandwidthResp.data.success) setOrderableBandwidth(bandwidthResp.data.orderable);
+      if (trafficResp.data.success) setOrderableTraffic(trafficResp.data.orderable);
+      if (ipResp.data.success) setOrderableIp(ipResp.data.orderable);
+    } catch (error: any) {
+      console.error('获取可订购服务失败:', error);
+    } finally {
+      setLoadingOrderable(false);
+    }
+  };
+
+  // 获取服务器选项
+  const fetchServerOptions = async (serviceName: string) => {
+    setLoadingOptions(true);
+    try {
+      const response = await api.get(`/server-control/${serviceName}/options`);
+      if (response.data.success) {
+        setServerOptions(response.data.options || []);
+      }
+    } catch (error: any) {
+      console.error('获取服务器选项失败:', error);
+    } finally {
+      setLoadingOptions(false);
+    }
+  };
+
+  // 获取IP规格
+  const fetchIpSpecs = async (serviceName: string) => {
+    setLoadingIpSpecs(true);
+    try {
+      const response = await api.get(`/server-control/${serviceName}/ip-specs`);
+      if (response.data.success) {
+        setIpSpecs(response.data.ipSpecs);
+      }
+    } catch (error: any) {
+      console.error('获取IP规格失败:', error);
+    } finally {
+      setLoadingIpSpecs(false);
+    }
+  };
+
   // 变更联系人
   const handleChangeContact = async () => {
     if (!selectedServer) return;
@@ -1830,6 +2097,12 @@ const ServerControlPage: React.FC = () => {
                     className="px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg text-cyan-400 hover:bg-cyan-500/20 transition-all flex items-center gap-2 justify-center disabled:opacity-50">
                     <Wifi className="w-4 h-4" />
                     {loadingNetworkSpecs ? '加载中...' : '网络规格'}
+                  </button>
+                  <button
+                    onClick={() => handleOpenAdvanced(selectedServer, 'burst')}
+                    className="px-4 py-2 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-lg text-yellow-400 hover:from-yellow-500/20 hover:to-orange-500/20 transition-all flex items-center gap-2 justify-center">
+                    <Settings className="w-4 h-4" />
+                    高级功能
                   </button>
                 </div>
               </div>
@@ -4754,6 +5027,745 @@ const ServerControlPage: React.FC = () => {
                     <div className="text-center py-12 text-cyber-muted">
                       <AlertCircle className="w-12 h-12 mx-auto mb-3 opacity-30" />
                       <p className="text-sm">无法加载网络规格信息</p>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+
+      {/* 高级功能管理对话框 */}
+      {createPortal(
+        <AnimatePresence>
+          {showAdvancedDialog && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowAdvancedDialog(false)}
+                className="absolute inset-0 bg-black/70 backdrop-blur-md"
+              />
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 20 }}
+                className="relative bg-cyber-bg/95 backdrop-blur-xl border border-yellow-500/30 rounded-xl shadow-2xl shadow-yellow-500/10 max-w-5xl w-full max-h-[88vh] overflow-hidden">
+                
+                <div className="h-0.5 bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500" />
+                
+                {/* 标题栏 */}
+                <div className="flex items-center justify-between px-4 py-2.5 border-b border-yellow-500/20 bg-gradient-to-r from-yellow-500/5 to-transparent">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-gradient-to-br from-yellow-500/20 to-orange-500/20 rounded-lg border border-yellow-500/30">
+                      <Settings className="w-4 h-4 text-yellow-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-cyber-text">高级功能管理</h3>
+                      <p className="text-[10px] text-cyber-muted/80 leading-none">
+                        {selectedServer?.name} · {selectedServer?.serviceName}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowAdvancedDialog(false)}
+                    className="p-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-md transition-all group">
+                    <X className="w-3.5 h-3.5 text-red-400 group-hover:text-red-300" />
+                  </button>
+                </div>
+
+                {/* 标签页导航 */}
+                <div className="flex items-center gap-1 px-4 py-2 border-b border-cyber-accent/20 overflow-x-auto">
+                  <button
+                    onClick={() => { setAdvancedTab('burst'); selectedServer && fetchBurst(selectedServer.serviceName); }}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap ${
+                      advancedTab === 'burst'
+                        ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40'
+                        : 'text-cyber-muted hover:text-cyber-text hover:bg-cyber-accent/10'
+                    }`}>
+                    <Zap className="w-3 h-3 inline mr-1" />
+                    突发带宽
+                  </button>
+                  <button
+                    onClick={() => { setAdvancedTab('firewall'); selectedServer && fetchFirewall(selectedServer.serviceName); }}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap ${
+                      advancedTab === 'firewall'
+                        ? 'bg-red-500/20 text-red-400 border border-red-500/40'
+                        : 'text-cyber-muted hover:text-cyber-text hover:bg-cyber-accent/10'
+                    }`}>
+                    <Shield className="w-3 h-3 inline mr-1" />
+                    防火墙
+                  </button>
+                  <button
+                    onClick={() => { setAdvancedTab('backup'); selectedServer && fetchBackupFtp(selectedServer.serviceName); }}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap ${
+                      advancedTab === 'backup'
+                        ? 'bg-blue-500/20 text-blue-400 border border-blue-500/40'
+                        : 'text-cyber-muted hover:text-cyber-text hover:bg-cyber-accent/10'
+                    }`}>
+                    <Database className="w-3 h-3 inline mr-1" />
+                    备份FTP
+                  </button>
+                  <button
+                    onClick={() => { setAdvancedTab('dns'); selectedServer && fetchSecondaryDns(selectedServer.serviceName); }}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap ${
+                      advancedTab === 'dns'
+                        ? 'bg-green-500/20 text-green-400 border border-green-500/40'
+                        : 'text-cyber-muted hover:text-cyber-text hover:bg-cyber-accent/10'
+                    }`}>
+                    <Globe className="w-3 h-3 inline mr-1" />
+                    从DNS
+                  </button>
+                  <button
+                    onClick={() => { setAdvancedTab('vmac'); selectedServer && fetchVirtualMacs(selectedServer.serviceName); }}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap ${
+                      advancedTab === 'vmac'
+                        ? 'bg-purple-500/20 text-purple-400 border border-purple-500/40'
+                        : 'text-cyber-muted hover:text-cyber-text hover:bg-cyber-accent/10'
+                    }`}>
+                    <Network className="w-3 h-3 inline mr-1" />
+                    虚拟MAC
+                  </button>
+                  <button
+                    onClick={() => { setAdvancedTab('vrack'); selectedServer && fetchVracks(selectedServer.serviceName); }}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap ${
+                      advancedTab === 'vrack'
+                        ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/40'
+                        : 'text-cyber-muted hover:text-cyber-text hover:bg-cyber-accent/10'
+                    }`}>
+                    <Server className="w-3 h-3 inline mr-1" />
+                    vRack
+                  </button>
+                  <button
+                    onClick={() => { setAdvancedTab('orderable'); selectedServer && fetchOrderable(selectedServer.serviceName); }}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap ${
+                      advancedTab === 'orderable'
+                        ? 'bg-pink-500/20 text-pink-400 border border-pink-500/40'
+                        : 'text-cyber-muted hover:text-cyber-text hover:bg-cyber-accent/10'
+                    }`}>
+                    <BarChart3 className="w-3 h-3 inline mr-1" />
+                    可订购
+                  </button>
+                  <button
+                    onClick={() => { setAdvancedTab('options'); selectedServer && fetchServerOptions(selectedServer.serviceName); }}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap ${
+                      advancedTab === 'options'
+                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
+                        : 'text-cyber-muted hover:text-cyber-text hover:bg-cyber-accent/10'
+                    }`}>
+                    <Cog className="w-3 h-3 inline mr-1" />
+                    选项
+                  </button>
+                  <button
+                    onClick={() => { setAdvancedTab('ip'); selectedServer && fetchIpSpecs(selectedServer.serviceName); }}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap ${
+                      advancedTab === 'ip'
+                        ? 'bg-teal-500/20 text-teal-400 border border-teal-500/40'
+                        : 'text-cyber-muted hover:text-cyber-text hover:bg-cyber-accent/10'
+                    }`}>
+                    <Wifi className="w-3 h-3 inline mr-1" />
+                    IP规格
+                  </button>
+                </div>
+
+                {/* 内容区域 */}
+                <div className="p-4 overflow-y-auto max-h-[calc(88vh-110px)] custom-scrollbar">
+                  {/* Burst突发带宽标签页 */}
+                  {advancedTab === 'burst' && (
+                    <div className="space-y-3">
+                      {loadingBurst ? (
+                        <div className="flex items-center justify-center py-12">
+                          <RefreshCw className="w-8 h-8 animate-spin text-yellow-400" />
+                        </div>
+                      ) : burst ? (
+                        <div>
+                          {burst.notAvailable ? (
+                            <div className="text-center py-12">
+                              <Zap className="w-16 h-16 mx-auto mb-4 text-cyber-muted/30" />
+                              <p className="text-sm text-cyber-muted mb-2">{burst.error || '该服务器不支持突发带宽功能'}</p>
+                              <p className="text-xs text-cyber-muted/70">部分服务器型号可能不支持此功能</p>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="bg-gradient-to-br from-yellow-500/5 to-orange-500/5 border border-yellow-500/30 rounded-lg p-4">
+                                <h4 className="text-sm font-semibold text-yellow-400 mb-3 flex items-center gap-2">
+                                  <Zap className="w-4 h-4" />
+                                  突发带宽状态
+                                </h4>
+                                <div className="grid grid-cols-2 gap-4 mb-4">
+                                  <div>
+                                    <span className="text-xs text-cyber-muted">状态</span>
+                                    <div className="text-lg font-semibold text-yellow-400 capitalize mt-1">
+                                      {burst.status === 'active' ? '激活' : burst.status === 'inactive' ? '未激活' : burst.status}
+                                    </div>
+                                  </div>
+                                  {burst.capacity && (
+                                    <div>
+                                      <span className="text-xs text-cyber-muted">容量</span>
+                                      <div className="text-lg font-semibold text-orange-400 mt-1">
+                                        {burst.capacity.value} {burst.capacity.unit}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => updateBurstStatus('active')}
+                                    disabled={burst.status === 'active'}
+                                    className="flex-1 px-4 py-2 bg-green-500/20 border border-green-500/40 rounded-lg text-green-400 hover:bg-green-500/30 disabled:opacity-50 transition-all text-sm">
+                                    激活
+                                  </button>
+                                  <button
+                                    onClick={() => updateBurstStatus('inactive')}
+                                    disabled={burst.status === 'inactive'}
+                                    className="flex-1 px-4 py-2 bg-red-500/20 border border-red-500/40 rounded-lg text-red-400 hover:bg-red-500/30 disabled:opacity-50 transition-all text-sm">
+                                    停用
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 text-xs text-yellow-300">
+                                <AlertCircle className="w-4 h-4 inline mr-1" />
+                                突发带宽可以临时提升服务器带宽性能，适用于流量突增场景。
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-center py-12 text-cyber-muted">
+                          <AlertCircle className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                          <p className="text-sm">无法加载突发带宽信息</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Firewall防火墙标签页 */}
+                  {advancedTab === 'firewall' && (
+                    <div className="space-y-3">
+                      {loadingFirewall ? (
+                        <div className="flex items-center justify-center py-12">
+                          <RefreshCw className="w-8 h-8 animate-spin text-red-400" />
+                        </div>
+                      ) : firewall ? (
+                        <div>
+                          {firewall.notAvailable ? (
+                            <div className="text-center py-12">
+                              <Shield className="w-16 h-16 mx-auto mb-4 text-cyber-muted/30" />
+                              <p className="text-sm text-cyber-muted mb-2">{firewall.error || '该服务器不支持防火墙功能'}</p>
+                              <p className="text-xs text-cyber-muted/70">部分服务器型号可能不支持此功能</p>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="bg-gradient-to-br from-red-500/5 to-orange-500/5 border border-red-500/30 rounded-lg p-4">
+                                <h4 className="text-sm font-semibold text-red-400 mb-3 flex items-center gap-2">
+                                  <Shield className="w-4 h-4" />
+                                  防火墙状态
+                                </h4>
+                                <div className="mb-4">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <div className={`w-3 h-3 rounded-full ${firewall.enabled ? 'bg-green-400' : 'bg-red-400'}`}></div>
+                                    <span className="text-sm text-cyber-muted">当前状态:</span>
+                                    <span className={`text-base font-semibold ${firewall.enabled ? 'text-green-400' : 'text-red-400'}`}>
+                                      {firewall.enabled ? '已启用' : '已禁用'}
+                                    </span>
+                                  </div>
+                                  {firewall.mode && (
+                                    <div className="text-xs text-cyber-muted">
+                                      模式: <span className="text-cyber-text">{firewall.mode}</span>
+                                    </div>
+                                  )}
+                                  {firewall.model && (
+                                    <div className="text-xs text-cyber-muted">
+                                      型号: <span className="text-cyber-text">{firewall.model}</span>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => updateFirewallStatus(true)}
+                                    disabled={firewall.enabled}
+                                    className="flex-1 px-4 py-2 bg-green-500/20 border border-green-500/40 rounded-lg text-green-400 hover:bg-green-500/30 disabled:opacity-50 transition-all text-sm">
+                                    启用防火墙
+                                  </button>
+                                  <button
+                                    onClick={() => updateFirewallStatus(false)}
+                                    disabled={!firewall.enabled}
+                                    className="flex-1 px-4 py-2 bg-red-500/20 border border-red-500/40 rounded-lg text-red-400 hover:bg-red-500/30 disabled:opacity-50 transition-all text-sm">
+                                    禁用防火墙
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-xs text-red-300">
+                                <AlertCircle className="w-4 h-4 inline mr-1" />
+                                防火墙提供基础网络保护。更多规则请前往OVH控制面板配置。
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-center py-12 text-cyber-muted">
+                          <AlertCircle className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                          <p className="text-sm">无法加载防火墙信息</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Backup FTP标签页 */}
+                  {advancedTab === 'backup' && (
+                    <div className="space-y-3">
+                      {loadingBackupFtp ? (
+                        <div className="flex items-center justify-center py-12">
+                          <RefreshCw className="w-8 h-8 animate-spin text-blue-400" />
+                        </div>
+                      ) : backupFtp?.notActivated ? (
+                        <div className="text-center py-12">
+                          <Database className="w-16 h-16 mx-auto mb-4 text-cyber-muted/30" />
+                          <p className="text-sm text-cyber-muted mb-4">备份FTP未激活</p>
+                          <button
+                            onClick={async () => {
+                              try {
+                                const response = await api.post(`/server-control/${selectedServer?.serviceName}/backup-ftp`);
+                                if (response.data.success) {
+                                  showToast({ type: 'success', title: '备份FTP已激活' });
+                                  selectedServer && fetchBackupFtp(selectedServer.serviceName);
+                                }
+                              } catch (error: any) {
+                                if (error?.response?.data?.notAvailable) {
+                                  showToast({ type: 'warning', title: '无法激活', message: error.response.data.error });
+                                } else {
+                                  showToast({ type: 'error', title: '激活失败', message: error.message });
+                                }
+                              }
+                            }}
+                            className="px-4 py-2 bg-blue-500/20 border border-blue-500/40 rounded-lg text-blue-400 hover:bg-blue-500/30 transition-all">
+                            激活备份FTP
+                          </button>
+                        </div>
+                      ) : backupFtp?.notAvailable ? (
+                        <div className="text-center py-12">
+                          <Database className="w-16 h-16 mx-auto mb-4 text-cyber-muted/30" />
+                          <p className="text-sm text-cyber-muted mb-2">{backupFtp.error || '该服务器无法使用备份FTP服务'}</p>
+                          <p className="text-xs text-cyber-muted/70">部分服务器型号或套餐可能不支持此功能</p>
+                        </div>
+                      ) : backupFtp ? (
+                        <div className="space-y-3">
+                          <div className="bg-gradient-to-br from-blue-500/5 to-cyan-500/5 border border-blue-500/30 rounded-lg p-4">
+                            <h4 className="text-sm font-semibold text-blue-400 mb-3">备份FTP信息</h4>
+                            <div className="grid grid-cols-2 gap-3 text-xs mb-3">
+                              <div>
+                                <span className="text-cyber-muted">FTP服务器:</span>
+                                <div className="text-cyber-text font-mono mt-1">{backupFtp.ftpBackupName || 'N/A'}</div>
+                              </div>
+                              <div>
+                                <span className="text-cyber-muted">配额:</span>
+                                <div className="text-blue-400 font-semibold mt-1">
+                                  {backupFtp.quota?.value} {backupFtp.quota?.unit}
+                                </div>
+                              </div>
+                              {backupFtp.usage && (
+                                <div>
+                                  <span className="text-cyber-muted">已使用:</span>
+                                  <div className="text-cyan-400 font-semibold mt-1">
+                                    {backupFtp.usage?.value} {backupFtp.usage?.unit}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="bg-cyber-grid/30 border border-cyber-accent/30 rounded-lg p-3">
+                            <h5 className="text-xs font-semibold text-cyber-text mb-2">访问控制列表</h5>
+                            {backupFtpAccess.length > 0 ? (
+                              <div className="space-y-2">
+                                {backupFtpAccess.map((access, idx) => (
+                                  <div key={idx} className="bg-cyber-bg/50 border border-cyber-accent/20 rounded p-2 text-xs">
+                                    <div className="font-mono text-cyber-text">{access.ipBlock}</div>
+                                    {access.ftp && <span className="text-green-400 mr-2">FTP</span>}
+                                    {access.nfs && <span className="text-blue-400 mr-2">NFS</span>}
+                                    {access.cifs && <span className="text-purple-400">CIFS</span>}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-cyber-muted">暂无访问控制规则</p>
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+
+                  {/* Secondary DNS标签页 */}
+                  {advancedTab === 'dns' && (
+                    <div className="space-y-3">
+                      {loadingSecondaryDns ? (
+                        <div className="flex items-center justify-center py-12">
+                          <RefreshCw className="w-8 h-8 animate-spin text-green-400" />
+                        </div>
+                      ) : (
+                        <div>
+                          {secondaryDns.length > 0 ? (
+                            <div className="space-y-2">
+                              {secondaryDns.map((dns, idx) => (
+                                <div key={idx} className="bg-gradient-to-br from-green-500/5 to-cyan-500/5 border border-green-500/30 rounded-lg p-3">
+                                  <div className="font-mono text-sm text-green-400">{dns.domain}</div>
+                                  {dns.dns && <div className="text-xs text-cyber-muted mt-1">DNS: {dns.dns}</div>}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center py-12 text-cyber-muted">
+                              <Globe className="w-16 h-16 mx-auto mb-3 opacity-30" />
+                              <p className="text-sm">暂无从DNS域名</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Virtual MAC标签页 */}
+                  {advancedTab === 'vmac' && (
+                    <div className="space-y-3">
+                      {loadingVirtualMacs ? (
+                        <div className="flex items-center justify-center py-12">
+                          <RefreshCw className="w-8 h-8 animate-spin text-purple-400" />
+                        </div>
+                      ) : (
+                        <div>
+                          {virtualMacs.length > 0 ? (
+                            <div className="space-y-2">
+                              {virtualMacs.map((vmac, idx) => (
+                                <div key={idx} className="bg-gradient-to-br from-purple-500/5 to-pink-500/5 border border-purple-500/30 rounded-lg p-3">
+                                  <div className="font-mono text-sm text-purple-400">{vmac.macAddress}</div>
+                                  <div className="text-xs text-cyber-muted mt-1">
+                                    类型: {vmac.type} | IP: {vmac.ipAddress}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center py-12 text-cyber-muted">
+                              <Network className="w-16 h-16 mx-auto mb-3 opacity-30" />
+                              <p className="text-sm">暂无虚拟MAC地址</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* vRack标签页 */}
+                  {advancedTab === 'vrack' && (
+                    <div className="space-y-3">
+                      {loadingVracks ? (
+                        <div className="flex items-center justify-center py-12">
+                          <RefreshCw className="w-8 h-8 animate-spin text-indigo-400" />
+                        </div>
+                      ) : (
+                        <div>
+                          {vracks.length > 0 ? (
+                            <div className="space-y-2">
+                              {vracks.map((vrack, idx) => (
+                                <div key={idx} className="bg-gradient-to-br from-indigo-500/5 to-purple-500/5 border border-indigo-500/30 rounded-lg p-3">
+                                  <div className="font-mono text-sm text-indigo-400">{vrack.vrackName}</div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center py-12 text-cyber-muted">
+                              <Server className="w-16 h-16 mx-auto mb-3 opacity-30" />
+                              <p className="text-sm">未连接vRack</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 可订购服务标签页 */}
+                  {advancedTab === 'orderable' && (
+                    <div className="space-y-3">
+                      {loadingOrderable ? (
+                        <div className="flex items-center justify-center py-12">
+                          <RefreshCw className="w-8 h-8 animate-spin text-pink-400" />
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {orderableBandwidth && (
+                            <div className="bg-gradient-to-br from-cyan-500/5 to-blue-500/5 border border-cyan-500/30 rounded-lg p-4">
+                              <h5 className="text-sm font-semibold text-cyan-400 mb-3 flex items-center gap-2">
+                                <BarChart3 className="w-4 h-4" />
+                                可订购带宽
+                              </h5>
+                              {orderableBandwidth.orderable ? (
+                                <div className="space-y-2">
+                                  {orderableBandwidth.platinum && orderableBandwidth.platinum.length > 0 && (
+                                    <div className="bg-cyber-bg/50 rounded p-2">
+                                      <div className="text-xs font-medium text-cyan-300 mb-1">Platinum</div>
+                                      <div className="text-xs text-cyber-muted">{orderableBandwidth.platinum.length} 个套餐可用</div>
+                                    </div>
+                                  )}
+                                  {orderableBandwidth.premium && orderableBandwidth.premium.length > 0 && (
+                                    <div className="bg-cyber-bg/50 rounded p-2">
+                                      <div className="text-xs font-medium text-blue-300 mb-1">Premium</div>
+                                      <div className="text-xs text-cyber-muted">{orderableBandwidth.premium.length} 个套餐可用</div>
+                                    </div>
+                                  )}
+                                  {orderableBandwidth.ultimate && orderableBandwidth.ultimate.length > 0 && (
+                                    <div className="bg-cyber-bg/50 rounded p-2">
+                                      <div className="text-xs font-medium text-purple-300 mb-1">Ultimate</div>
+                                      <div className="text-xs text-cyber-muted">{orderableBandwidth.ultimate.length} 个套餐可用</div>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="text-xs text-cyber-muted py-2">当前不可订购带宽升级</div>
+                              )}
+                            </div>
+                          )}
+                          {orderableTraffic && (
+                            <div className="bg-gradient-to-br from-orange-500/5 to-red-500/5 border border-orange-500/30 rounded-lg p-4">
+                              <h5 className="text-sm font-semibold text-orange-400 mb-3 flex items-center gap-2">
+                                <Activity className="w-4 h-4" />
+                                可订购流量
+                              </h5>
+                              {orderableTraffic.orderable ? (
+                                orderableTraffic.traffic && orderableTraffic.traffic.length > 0 ? (
+                                  <div className="text-xs text-cyber-muted py-2">
+                                    {orderableTraffic.traffic.length} 个流量套餐可用
+                                  </div>
+                                ) : (
+                                  <div className="text-xs text-cyber-muted py-2">暂无可用流量套餐</div>
+                                )
+                              ) : (
+                                <div className="text-xs text-cyber-muted py-2">当前不可订购流量升级</div>
+                              )}
+                            </div>
+                          )}
+                          {orderableIp && (
+                            <div className="bg-gradient-to-br from-purple-500/5 to-pink-500/5 border border-purple-500/30 rounded-lg p-4">
+                              <h5 className="text-sm font-semibold text-purple-400 mb-3 flex items-center gap-2">
+                                <Wifi className="w-4 h-4" />
+                                可订购IP
+                              </h5>
+                              <div className="space-y-3">
+                                {orderableIp.ipv4 && orderableIp.ipv4.length > 0 && (
+                                  <div>
+                                    <div className="text-xs font-medium text-green-400 mb-2">IPv4地址</div>
+                                    {orderableIp.ipv4.map((ip: any, idx: number) => (
+                                      <div key={idx} className="bg-cyber-bg/50 rounded p-3 mb-2">
+                                        <div className="flex items-center justify-between mb-2">
+                                          <span className="text-xs font-medium text-cyber-text">
+                                            {ip.type === 'failover' ? '故障转移IP' : ip.type === 'static' ? '静态IP' : ip.type}
+                                          </span>
+                                          {ip.included && (
+                                            <span className="text-xs px-2 py-0.5 bg-green-500/20 text-green-400 rounded">已包含</span>
+                                          )}
+                                        </div>
+                                        <div className="text-xs text-cyber-muted mb-1">
+                                          可用块大小: {ip.blockSizes?.join(', ')} IP
+                                        </div>
+                                        {ip.ipNumber && (
+                                          <div className="text-xs text-cyber-muted">
+                                            IP数量: {ip.ipNumber} | 数量: {ip.number}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                {orderableIp.ipv6 && orderableIp.ipv6.length > 0 && (
+                                  <div>
+                                    <div className="text-xs font-medium text-blue-400 mb-2">IPv6地址</div>
+                                    {orderableIp.ipv6.map((ip: any, idx: number) => (
+                                      <div key={idx} className="bg-cyber-bg/50 rounded p-3 mb-2">
+                                        <div className="text-xs text-cyber-text">
+                                          {ip.type || 'IPv6'}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                {(!orderableIp.ipv4 || orderableIp.ipv4.length === 0) && 
+                                 (!orderableIp.ipv6 || orderableIp.ipv6.length === 0) && (
+                                  <div className="text-xs text-cyber-muted py-2">暂无可用IP选项</div>
+                                )}
+                              </div>
+                              <div className="mt-3 pt-3 border-t border-purple-500/20 text-xs text-purple-300/70">
+                                <AlertCircle className="w-3 h-3 inline mr-1" />
+                                此页面仅显示可订购选项，实际订购请前往OVH控制面板
+                              </div>
+                            </div>
+                          )}
+                          {!orderableBandwidth && !orderableTraffic && !orderableIp && (
+                            <div className="text-center py-12 text-cyber-muted">
+                              <BarChart3 className="w-16 h-16 mx-auto mb-3 opacity-30" />
+                              <p className="text-sm">暂无可订购服务</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 服务器选项标签页 */}
+                  {advancedTab === 'options' && (
+                    <div className="space-y-3">
+                      {loadingOptions ? (
+                        <div className="flex items-center justify-center py-12">
+                          <RefreshCw className="w-8 h-8 animate-spin text-cyan-400" />
+                        </div>
+                      ) : (
+                        <div>
+                          {serverOptions.length > 0 ? (
+                            <div className="space-y-2">
+                              {serverOptions.map((option, idx) => {
+                                // 选项名称翻译
+                                const optionNames: Record<string, string> = {
+                                  'BANDWIDTH': '带宽',
+                                  'TRAFFIC': '流量',
+                                  'BACKUP_STORAGE': '备份存储',
+                                  'KVM': 'KVM',
+                                  'KVM_EXPRESS': 'KVM Express',
+                                  'USB_KEY': 'USB密钥',
+                                  'PROFESSIONAL_USE': '专业用途',
+                                  'IP': 'IP地址',
+                                  'IPFO': '故障转移IP'
+                                };
+                                
+                                // 状态翻译
+                                const stateNames: Record<string, string> = {
+                                  'subscribed': '已订阅',
+                                  'released': '已释放',
+                                  'releasing': '释放中',
+                                  'toDelete': '待删除'
+                                };
+                                
+                                const optionName = optionNames[option.option] || option.option;
+                                const stateName = option.state ? (stateNames[option.state] || option.state) : '';
+                                
+                                return (
+                                  <div key={idx} className="bg-gradient-to-br from-cyan-500/5 to-blue-500/5 border border-cyan-500/30 rounded-lg p-3">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <div className="text-sm text-cyan-400 font-medium">{optionName}</div>
+                                      {option.state && (
+                                        <span className={`text-xs px-2 py-0.5 rounded ${
+                                          option.state === 'subscribed' 
+                                            ? 'bg-green-500/20 text-green-400' 
+                                            : option.state === 'releasing' || option.state === 'toDelete'
+                                            ? 'bg-yellow-500/20 text-yellow-400'
+                                            : 'bg-red-500/20 text-red-400'
+                                        }`}>
+                                          {stateName}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {option.option && (
+                                      <div className="text-xs text-cyber-muted font-mono">
+                                        {option.option}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="text-center py-12 text-cyber-muted">
+                              <Cog className="w-16 h-16 mx-auto mb-3 opacity-30" />
+                              <p className="text-sm">暂无服务器选项</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* IP规格标签页 */}
+                  {advancedTab === 'ip' && (
+                    <div className="space-y-3">
+                      {loadingIpSpecs ? (
+                        <div className="flex items-center justify-center py-12">
+                          <RefreshCw className="w-8 h-8 animate-spin text-teal-400" />
+                        </div>
+                      ) : ipSpecs ? (
+                        <div className="bg-gradient-to-br from-teal-500/5 to-cyan-500/5 border border-teal-500/30 rounded-lg p-4">
+                          <h4 className="text-sm font-semibold text-teal-400 mb-3 flex items-center gap-2">
+                            <Wifi className="w-4 h-4" />
+                            IP规格详情
+                          </h4>
+                          <div className="space-y-3">
+                            {ipSpecs.ipv4 && ipSpecs.ipv4.length > 0 && (
+                              <div>
+                                <div className="text-xs font-medium text-green-400 mb-2">IPv4地址</div>
+                                {ipSpecs.ipv4.map((ip: any, idx: number) => (
+                                  <div key={idx} className="bg-cyber-bg/50 rounded p-3 mb-2">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <span className="text-xs font-medium text-cyber-text">
+                                        {ip.type === 'failover' ? '故障转移IP' : ip.type === 'static' ? '静态IP' : ip.type || 'IPv4'}
+                                      </span>
+                                      {ip.included && (
+                                        <span className="text-xs px-2 py-0.5 bg-green-500/20 text-green-400 rounded">已包含</span>
+                                      )}
+                                    </div>
+                                    {ip.blockSizes && ip.blockSizes.length > 0 && (
+                                      <div className="text-xs text-cyber-muted mb-1">
+                                        可用块大小: <span className="text-cyber-text font-mono">{ip.blockSizes.join(', ')}</span> IP
+                                      </div>
+                                    )}
+                                    {ip.ipNumber !== undefined && (
+                                      <div className="text-xs text-cyber-muted mb-1">
+                                        IP数量: <span className="text-cyber-text">{ip.ipNumber}</span>
+                                      </div>
+                                    )}
+                                    {ip.number !== undefined && (
+                                      <div className="text-xs text-cyber-muted">
+                                        数量: <span className="text-cyber-text">{ip.number}</span>
+                                      </div>
+                                    )}
+                                    {ip.optionRequired && (
+                                      <div className="text-xs text-yellow-400 mt-1">
+                                        需要选项: {ip.optionRequired}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {ipSpecs.ipv6 && ipSpecs.ipv6.length > 0 && (
+                              <div>
+                                <div className="text-xs font-medium text-blue-400 mb-2">IPv6地址</div>
+                                {ipSpecs.ipv6.map((ip: any, idx: number) => (
+                                  <div key={idx} className="bg-cyber-bg/50 rounded p-3 mb-2">
+                                    <div className="text-xs text-cyber-text">
+                                      {ip.type || 'IPv6'}
+                                    </div>
+                                    {ip.blockSizes && ip.blockSizes.length > 0 && (
+                                      <div className="text-xs text-cyber-muted mt-1">
+                                        可用块大小: <span className="text-cyber-text font-mono">{ip.blockSizes.join(', ')}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {(!ipSpecs.ipv4 || ipSpecs.ipv4.length === 0) && 
+                             (!ipSpecs.ipv6 || ipSpecs.ipv6.length === 0) && (
+                              <div className="text-xs text-cyber-muted py-2">暂无IP规格信息</div>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-12 text-cyber-muted">
+                          <AlertCircle className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                          <p className="text-sm">无法加载IP规格信息</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

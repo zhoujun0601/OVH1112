@@ -6221,6 +6221,1049 @@ def get_network_interface_stats(service_name):
         add_log("ERROR", f"[Network] 获取网络接口信息失败: {str(e)}", "server_control")
         return jsonify({"success": False, "error": str(e)}), 500
 
+# ==================== Burst 突发带宽 ====================
+@app.route('/api/server-control/<service_name>/burst', methods=['OPTIONS', 'GET'])
+def get_burst(service_name):
+    """获取突发带宽状态"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        burst = client.get(f'/dedicated/server/{service_name}/burst')
+        add_log("INFO", f"获取服务器 {service_name} 突发带宽状态成功", "server_control")
+        return jsonify({
+            "success": True,
+            "burst": burst
+        })
+    except Exception as e:
+        error_msg = str(e)
+        # 如果对象不存在，说明该服务器不支持突发带宽
+        if 'does not exist' in error_msg.lower() or 'not exist' in error_msg.lower():
+            add_log("INFO", f"服务器 {service_name} 不支持突发带宽功能", "server_control")
+            return jsonify({
+                "success": False,
+                "error": "该服务器不支持突发带宽功能",
+                "notAvailable": True
+            }), 404
+        add_log("ERROR", f"获取服务器 {service_name} 突发带宽失败: {error_msg}", "server_control")
+        return jsonify({"success": False, "error": error_msg}), 500
+
+@app.route('/api/server-control/<service_name>/burst', methods=['OPTIONS', 'PUT'])
+def update_burst(service_name):
+    """更新突发带宽状态"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    data = request.get_json()
+    status = data.get('status')  # active, inactive, inactivePending
+    
+    if not status:
+        return jsonify({"success": False, "error": "缺少status参数"}), 400
+    
+    try:
+        result = client.put(f'/dedicated/server/{service_name}/burst', status=status)
+        add_log("INFO", f"更新服务器 {service_name} 突发带宽状态为: {status}", "server_control")
+        return jsonify({
+            "success": True,
+            "message": "突发带宽状态已更新",
+            "result": result
+        })
+    except Exception as e:
+        add_log("ERROR", f"更新服务器 {service_name} 突发带宽失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# ==================== Firewall 防火墙 ====================
+@app.route('/api/server-control/<service_name>/firewall', methods=['OPTIONS', 'GET'])
+def get_firewall(service_name):
+    """获取防火墙状态"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        firewall = client.get(f'/dedicated/server/{service_name}/features/firewall')
+        add_log("INFO", f"获取服务器 {service_name} 防火墙状态成功", "server_control")
+        return jsonify({
+            "success": True,
+            "firewall": firewall
+        })
+    except Exception as e:
+        error_msg = str(e)
+        # 如果对象不存在，说明该服务器不支持防火墙
+        if 'does not exist' in error_msg.lower() or 'not exist' in error_msg.lower():
+            add_log("INFO", f"服务器 {service_name} 不支持防火墙功能", "server_control")
+            return jsonify({
+                "success": False,
+                "error": "该服务器不支持防火墙功能",
+                "notAvailable": True
+            }), 404
+        add_log("ERROR", f"获取服务器 {service_name} 防火墙失败: {error_msg}", "server_control")
+        return jsonify({"success": False, "error": error_msg}), 500
+
+@app.route('/api/server-control/<service_name>/firewall', methods=['OPTIONS', 'PUT'])
+def update_firewall(service_name):
+    """更新防火墙状态"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    data = request.get_json()
+    enabled = data.get('enabled')  # True/False
+    
+    if enabled is None:
+        return jsonify({"success": False, "error": "缺少enabled参数"}), 400
+    
+    try:
+        result = client.put(f'/dedicated/server/{service_name}/features/firewall', enabled=enabled)
+        status_text = "启用" if enabled else "禁用"
+        add_log("INFO", f"{status_text}服务器 {service_name} 防火墙", "server_control")
+        return jsonify({
+            "success": True,
+            "message": f"防火墙已{status_text}",
+            "result": result
+        })
+    except Exception as e:
+        add_log("ERROR", f"更新服务器 {service_name} 防火墙失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# ==================== Backup FTP 备份FTP ====================
+@app.route('/api/server-control/<service_name>/backup-ftp', methods=['OPTIONS', 'GET'])
+def get_backup_ftp(service_name):
+    """获取备份FTP信息"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        backup_ftp = client.get(f'/dedicated/server/{service_name}/features/backupFTP')
+        add_log("INFO", f"获取服务器 {service_name} 备份FTP信息成功", "server_control")
+        return jsonify({
+            "success": True,
+            "backupFtp": backup_ftp
+        })
+    except Exception as e:
+        error_msg = str(e)
+        if 'does not exist' in error_msg.lower():
+            return jsonify({"success": False, "error": "备份FTP未激活", "notActivated": True}), 404
+        add_log("ERROR", f"获取服务器 {service_name} 备份FTP失败: {error_msg}", "server_control")
+        return jsonify({"success": False, "error": error_msg}), 500
+
+@app.route('/api/server-control/<service_name>/backup-ftp', methods=['OPTIONS', 'POST'])
+def activate_backup_ftp(service_name):
+    """激活备份FTP"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        result = client.post(f'/dedicated/server/{service_name}/features/backupFTP')
+        add_log("INFO", f"激活服务器 {service_name} 备份FTP成功", "server_control")
+        return jsonify({
+            "success": True,
+            "message": "备份FTP已激活",
+            "result": result
+        })
+    except Exception as e:
+        error_msg = str(e)
+        # 如果无法使用该服务
+        if 'cannot benefit' in error_msg.lower() or 'not available' in error_msg.lower():
+            add_log("INFO", f"服务器 {service_name} 无法使用备份FTP服务: {error_msg}", "server_control")
+            return jsonify({
+                "success": False,
+                "error": "该服务器无法使用备份FTP服务",
+                "notAvailable": True,
+                "reason": error_msg
+            }), 400
+        add_log("ERROR", f"激活服务器 {service_name} 备份FTP失败: {error_msg}", "server_control")
+        return jsonify({"success": False, "error": error_msg}), 500
+
+@app.route('/api/server-control/<service_name>/backup-ftp', methods=['OPTIONS', 'DELETE'])
+def delete_backup_ftp(service_name):
+    """删除备份FTP"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        result = client.delete(f'/dedicated/server/{service_name}/features/backupFTP')
+        add_log("INFO", f"删除服务器 {service_name} 备份FTP成功", "server_control")
+        return jsonify({
+            "success": True,
+            "message": "备份FTP已删除",
+            "result": result
+        })
+    except Exception as e:
+        add_log("ERROR", f"删除服务器 {service_name} 备份FTP失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/server-control/<service_name>/backup-ftp/access', methods=['OPTIONS', 'GET'])
+def get_backup_ftp_access(service_name):
+    """获取备份FTP访问控制列表"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        # 获取访问控制IP块列表
+        ip_blocks = client.get(f'/dedicated/server/{service_name}/features/backupFTP/access')
+        
+        # 获取每个IP块的详细信息
+        access_list = []
+        for ip_block in ip_blocks:
+            try:
+                detail = client.get(f'/dedicated/server/{service_name}/features/backupFTP/access/{ip_block}')
+                access_list.append(detail)
+            except Exception as e:
+                add_log("WARN", f"获取备份FTP访问详情失败 {ip_block}: {str(e)}", "server_control")
+                access_list.append({'ipBlock': ip_block, 'error': str(e)})
+        
+        return jsonify({
+            "success": True,
+            "accessList": access_list
+        })
+    except Exception as e:
+        add_log("ERROR", f"获取服务器 {service_name} 备份FTP访问列表失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/server-control/<service_name>/backup-ftp/access', methods=['OPTIONS', 'POST'])
+def add_backup_ftp_access(service_name):
+    """添加备份FTP访问IP"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    data = request.get_json()
+    ip_block = data.get('ipBlock')
+    ftp = data.get('ftp', True)
+    nfs = data.get('nfs', False)
+    cifs = data.get('cifs', False)
+    
+    if not ip_block:
+        return jsonify({"success": False, "error": "缺少ipBlock参数"}), 400
+    
+    try:
+        result = client.post(
+            f'/dedicated/server/{service_name}/features/backupFTP/access',
+            cifs=cifs,
+            ftp=ftp,
+            ipBlock=ip_block,
+            nfs=nfs
+        )
+        add_log("INFO", f"添加备份FTP访问IP {ip_block} 成功", "server_control")
+        return jsonify({
+            "success": True,
+            "message": "访问IP已添加",
+            "result": result
+        })
+    except Exception as e:
+        add_log("ERROR", f"添加备份FTP访问IP失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/server-control/<service_name>/backup-ftp/access/<path:ip_block>', methods=['OPTIONS', 'DELETE'])
+def delete_backup_ftp_access(service_name, ip_block):
+    """删除备份FTP访问IP"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        result = client.delete(f'/dedicated/server/{service_name}/features/backupFTP/access/{ip_block}')
+        add_log("INFO", f"删除备份FTP访问IP {ip_block} 成功", "server_control")
+        return jsonify({
+            "success": True,
+            "message": "访问IP已删除"
+        })
+    except Exception as e:
+        add_log("ERROR", f"删除备份FTP访问IP失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/server-control/<service_name>/backup-ftp/password', methods=['OPTIONS', 'POST'])
+def change_backup_ftp_password(service_name):
+    """修改备份FTP密码"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        result = client.post(f'/dedicated/server/{service_name}/features/backupFTP/password')
+        add_log("INFO", f"修改服务器 {service_name} 备份FTP密码成功", "server_control")
+        return jsonify({
+            "success": True,
+            "message": "密码已重置，新密码已发送至邮箱",
+            "result": result
+        })
+    except Exception as e:
+        add_log("ERROR", f"修改备份FTP密码失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/server-control/<service_name>/backup-ftp/authorizable-blocks', methods=['OPTIONS', 'GET'])
+def get_backup_ftp_authorizable_blocks(service_name):
+    """获取可授权的IP块列表"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        blocks = client.get(f'/dedicated/server/{service_name}/features/backupFTP/authorizableBlocks')
+        return jsonify({
+            "success": True,
+            "blocks": blocks
+        })
+    except Exception as e:
+        add_log("ERROR", f"获取可授权IP块失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# ==================== Backup Cloud 云备份 ====================
+@app.route('/api/server-control/<service_name>/backup-cloud', methods=['OPTIONS', 'GET'])
+def get_backup_cloud(service_name):
+    """获取云备份信息"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        backup_cloud = client.get(f'/dedicated/server/{service_name}/features/backupCloud')
+        add_log("INFO", f"获取服务器 {service_name} 云备份信息成功", "server_control")
+        return jsonify({
+            "success": True,
+            "backupCloud": backup_cloud
+        })
+    except Exception as e:
+        error_msg = str(e)
+        if 'does not exist' in error_msg.lower():
+            return jsonify({"success": False, "error": "云备份未激活", "notActivated": True}), 404
+        add_log("ERROR", f"获取服务器 {service_name} 云备份失败: {error_msg}", "server_control")
+        return jsonify({"success": False, "error": error_msg}), 500
+
+@app.route('/api/server-control/<service_name>/backup-cloud/offer-details', methods=['OPTIONS', 'GET'])
+def get_backup_cloud_offer_details(service_name):
+    """获取云备份套餐详情"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        offer_details = client.get(f'/dedicated/server/{service_name}/backupCloudOfferDetails')
+        return jsonify({
+            "success": True,
+            "offerDetails": offer_details
+        })
+    except Exception as e:
+        add_log("ERROR", f"获取云备份套餐详情失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# ==================== Secondary DNS 从DNS ====================
+@app.route('/api/server-control/<service_name>/secondary-dns', methods=['OPTIONS', 'GET'])
+def get_secondary_dns_domains(service_name):
+    """获取从DNS域名列表"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        domains = client.get(f'/dedicated/server/{service_name}/secondaryDnsDomains')
+        dns_list = []
+        for domain in domains:
+            try:
+                detail = client.get(f'/dedicated/server/{service_name}/secondaryDnsDomains/{domain}')
+                detail['domain'] = domain
+                dns_list.append(detail)
+            except:
+                dns_list.append({'domain': domain})
+        
+        return jsonify({
+            "success": True,
+            "domains": dns_list
+        })
+    except Exception as e:
+        add_log("ERROR", f"获取从DNS域名失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/server-control/<service_name>/secondary-dns', methods=['OPTIONS', 'POST'])
+def add_secondary_dns_domain(service_name):
+    """添加从DNS域名"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    data = request.get_json()
+    domain = data.get('domain')
+    
+    if not domain:
+        return jsonify({"success": False, "error": "缺少domain参数"}), 400
+    
+    try:
+        result = client.post(f'/dedicated/server/{service_name}/secondaryDnsDomains', domain=domain)
+        add_log("INFO", f"添加从DNS域名 {domain} 成功", "server_control")
+        return jsonify({
+            "success": True,
+            "message": "从DNS域名已添加"
+        })
+    except Exception as e:
+        add_log("ERROR", f"添加从DNS域名失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/server-control/<service_name>/secondary-dns/<path:domain>', methods=['OPTIONS', 'DELETE'])
+def delete_secondary_dns_domain(service_name, domain):
+    """删除从DNS域名"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        client.delete(f'/dedicated/server/{service_name}/secondaryDnsDomains/{domain}')
+        add_log("INFO", f"删除从DNS域名 {domain} 成功", "server_control")
+        return jsonify({
+            "success": True,
+            "message": "从DNS域名已删除"
+        })
+    except Exception as e:
+        add_log("ERROR", f"删除从DNS域名失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# ==================== Virtual MAC Address 虚拟MAC ====================
+@app.route('/api/server-control/<service_name>/virtual-mac', methods=['OPTIONS', 'GET'])
+def get_virtual_mac_list(service_name):
+    """获取虚拟MAC地址列表"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        mac_addresses = client.get(f'/dedicated/server/{service_name}/virtualMac')
+        mac_list = []
+        for mac in mac_addresses:
+            try:
+                detail = client.get(f'/dedicated/server/{service_name}/virtualMac/{mac}')
+                detail['macAddress'] = mac
+                mac_list.append(detail)
+            except:
+                mac_list.append({'macAddress': mac})
+        
+        return jsonify({
+            "success": True,
+            "virtualMacs": mac_list
+        })
+    except Exception as e:
+        add_log("ERROR", f"获取虚拟MAC列表失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/server-control/<service_name>/virtual-mac', methods=['OPTIONS', 'POST'])
+def create_virtual_mac(service_name):
+    """创建虚拟MAC地址"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    data = request.get_json()
+    ip_address = data.get('ipAddress')
+    mac_type = data.get('type')  # ovh, vmware
+    virtual_machine_name = data.get('virtualMachineName')
+    
+    if not ip_address or not mac_type:
+        return jsonify({"success": False, "error": "缺少必需参数"}), 400
+    
+    try:
+        result = client.post(
+            f'/dedicated/server/{service_name}/virtualMac',
+            ipAddress=ip_address,
+            type=mac_type,
+            virtualMachineName=virtual_machine_name
+        )
+        add_log("INFO", f"创建虚拟MAC成功: {ip_address}", "server_control")
+        return jsonify({
+            "success": True,
+            "message": "虚拟MAC已创建",
+            "result": result
+        })
+    except Exception as e:
+        add_log("ERROR", f"创建虚拟MAC失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# ==================== Virtual Network Interface 虚拟网络接口 ====================
+@app.route('/api/server-control/<service_name>/virtual-network-interface', methods=['OPTIONS', 'GET'])
+def get_virtual_network_interfaces(service_name):
+    """获取虚拟网络接口列表"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        uuids = client.get(f'/dedicated/server/{service_name}/virtualNetworkInterface')
+        interfaces = []
+        for uuid in uuids:
+            try:
+                detail = client.get(f'/dedicated/server/{service_name}/virtualNetworkInterface/{uuid}')
+                detail['uuid'] = uuid
+                interfaces.append(detail)
+            except:
+                interfaces.append({'uuid': uuid})
+        
+        return jsonify({
+            "success": True,
+            "interfaces": interfaces
+        })
+    except Exception as e:
+        add_log("ERROR", f"获取虚拟网络接口失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/server-control/<service_name>/virtual-network-interface/<uuid>/enable', methods=['OPTIONS', 'POST'])
+def enable_virtual_network_interface(service_name, uuid):
+    """启用虚拟网络接口"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        result = client.post(f'/dedicated/server/{service_name}/virtualNetworkInterface/{uuid}/enable')
+        add_log("INFO", f"启用虚拟网络接口 {uuid} 成功", "server_control")
+        return jsonify({
+            "success": True,
+            "message": "虚拟网络接口已启用"
+        })
+    except Exception as e:
+        add_log("ERROR", f"启用虚拟网络接口失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/server-control/<service_name>/virtual-network-interface/<uuid>/disable', methods=['OPTIONS', 'POST'])
+def disable_virtual_network_interface(service_name, uuid):
+    """禁用虚拟网络接口"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        result = client.post(f'/dedicated/server/{service_name}/virtualNetworkInterface/{uuid}/disable')
+        add_log("INFO", f"禁用虚拟网络接口 {uuid} 成功", "server_control")
+        return jsonify({
+            "success": True,
+            "message": "虚拟网络接口已禁用"
+        })
+    except Exception as e:
+        add_log("ERROR", f"禁用虚拟网络接口失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# ==================== OLA 完整管理 ====================
+@app.route('/api/server-control/<service_name>/ola/group', methods=['OPTIONS', 'POST'])
+def ola_group(service_name):
+    """创建OLA组"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        result = client.post(f'/dedicated/server/{service_name}/ola/group')
+        add_log("INFO", f"创建OLA组成功: {service_name}", "server_control")
+        return jsonify({
+            "success": True,
+            "message": "OLA组已创建",
+            "result": result
+        })
+    except Exception as e:
+        add_log("ERROR", f"创建OLA组失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/server-control/<service_name>/ola/ungroup', methods=['OPTIONS', 'POST'])
+def ola_ungroup(service_name):
+    """解散OLA组"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        result = client.post(f'/dedicated/server/{service_name}/ola/ungroup')
+        add_log("INFO", f"解散OLA组成功: {service_name}", "server_control")
+        return jsonify({
+            "success": True,
+            "message": "OLA组已解散",
+            "result": result
+        })
+    except Exception as e:
+        add_log("ERROR", f"解散OLA组失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# ==================== vRack 管理 ====================
+@app.route('/api/server-control/<service_name>/vrack', methods=['OPTIONS', 'GET'])
+def get_vrack_list(service_name):
+    """获取vRack列表"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        vracks = client.get(f'/dedicated/server/{service_name}/vrack')
+        vrack_list = []
+        for vrack in vracks:
+            try:
+                detail = client.get(f'/dedicated/server/{service_name}/vrack/{vrack}')
+                detail['vrackName'] = vrack
+                vrack_list.append(detail)
+            except:
+                vrack_list.append({'vrackName': vrack})
+        
+        return jsonify({
+            "success": True,
+            "vracks": vrack_list
+        })
+    except Exception as e:
+        add_log("ERROR", f"获取vRack列表失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/server-control/<service_name>/vrack/<path:vrack>', methods=['OPTIONS', 'DELETE'])
+def remove_from_vrack(service_name, vrack):
+    """从vRack中移除服务器"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        result = client.delete(f'/dedicated/server/{service_name}/vrack/{vrack}')
+        add_log("INFO", f"从vRack {vrack} 移除服务器成功", "server_control")
+        return jsonify({
+            "success": True,
+            "message": "服务器已从vRack移除"
+        })
+    except Exception as e:
+        add_log("ERROR", f"从vRack移除服务器失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# ==================== Orderable Services 可订购服务 ====================
+@app.route('/api/server-control/<service_name>/orderable/bandwidth', methods=['OPTIONS', 'GET'])
+def get_orderable_bandwidth(service_name):
+    """获取可订购带宽"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        orderable = client.get(f'/dedicated/server/{service_name}/orderable/bandwidth')
+        return jsonify({
+            "success": True,
+            "orderable": orderable
+        })
+    except Exception as e:
+        add_log("ERROR", f"获取可订购带宽失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/server-control/<service_name>/orderable/traffic', methods=['OPTIONS', 'GET'])
+def get_orderable_traffic(service_name):
+    """获取可订购流量"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        orderable = client.get(f'/dedicated/server/{service_name}/orderable/traffic')
+        return jsonify({
+            "success": True,
+            "orderable": orderable
+        })
+    except Exception as e:
+        add_log("ERROR", f"获取可订购流量失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/server-control/<service_name>/orderable/ip', methods=['OPTIONS', 'GET'])
+def get_orderable_ip(service_name):
+    """获取可订购IP"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        orderable = client.get(f'/dedicated/server/{service_name}/orderable/ip')
+        return jsonify({
+            "success": True,
+            "orderable": orderable
+        })
+    except Exception as e:
+        add_log("ERROR", f"获取可订购IP失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# ==================== Options 选项管理 ====================
+@app.route('/api/server-control/<service_name>/options', methods=['OPTIONS', 'GET'])
+def get_server_options(service_name):
+    """获取服务器选项列表"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        options = client.get(f'/dedicated/server/{service_name}/option')
+        option_list = []
+        for option in options:
+            try:
+                detail = client.get(f'/dedicated/server/{service_name}/option/{option}')
+                detail['option'] = option
+                option_list.append(detail)
+            except:
+                option_list.append({'option': option})
+        
+        return jsonify({
+            "success": True,
+            "options": option_list
+        })
+    except Exception as e:
+        add_log("ERROR", f"获取服务器选项失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# ==================== IP Specifications IP规格 ====================
+@app.route('/api/server-control/<service_name>/ip-specs', methods=['OPTIONS', 'GET'])
+def get_ip_specs(service_name):
+    """获取IP规格信息"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        ip_specs = client.get(f'/dedicated/server/{service_name}/specifications/ip')
+        return jsonify({
+            "success": True,
+            "ipSpecs": ip_specs
+        })
+    except Exception as e:
+        add_log("ERROR", f"获取IP规格失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# ==================== IP 高级管理 ====================
+@app.route('/api/server-control/<service_name>/ip/can-be-moved-to', methods=['OPTIONS', 'GET'])
+def get_ip_can_be_moved_to(service_name):
+    """检查IP可迁移目标"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        targets = client.get(f'/dedicated/server/{service_name}/ipCanBeMovedTo')
+        return jsonify({
+            "success": True,
+            "targets": targets
+        })
+    except Exception as e:
+        add_log("ERROR", f"获取IP迁移目标失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/server-control/<service_name>/ip/country-available', methods=['OPTIONS', 'GET'])
+def get_ip_country_available(service_name):
+    """获取可用IP国家列表"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        countries = client.get(f'/dedicated/server/{service_name}/ipCountryAvailable')
+        return jsonify({
+            "success": True,
+            "countries": countries
+        })
+    except Exception as e:
+        add_log("ERROR", f"获取可用IP国家失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/server-control/<service_name>/ip/move', methods=['OPTIONS', 'POST'])
+def move_ip(service_name):
+    """迁移IP到其他服务器"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    data = request.get_json()
+    ip = data.get('ip')
+    to = data.get('to')
+    
+    if not ip or not to:
+        return jsonify({"success": False, "error": "缺少必需参数"}), 400
+    
+    try:
+        result = client.post(f'/dedicated/server/{service_name}/ipMove', ip=ip, to=to)
+        add_log("INFO", f"IP迁移任务已创建: {ip} -> {to}", "server_control")
+        return jsonify({
+            "success": True,
+            "message": "IP迁移任务已创建",
+            "result": result
+        })
+    except Exception as e:
+        add_log("ERROR", f"IP迁移失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# ==================== Ongoing Tasks 进行中任务 ====================
+@app.route('/api/server-control/<service_name>/ongoing', methods=['OPTIONS', 'GET'])
+def get_ongoing_tasks(service_name):
+    """获取进行中的任务"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        ongoing = client.get(f'/dedicated/server/{service_name}/ongoing')
+        return jsonify({
+            "success": True,
+            "ongoing": ongoing
+        })
+    except Exception as e:
+        add_log("ERROR", f"获取进行中任务失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# ==================== Windows License 许可证 ====================
+@app.route('/api/server-control/<service_name>/license/windows/compliant', methods=['OPTIONS', 'GET'])
+def get_compliant_windows_versions(service_name):
+    """获取兼容的Windows版本"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        versions = client.get(f'/dedicated/server/{service_name}/license/compliantWindows')
+        return jsonify({
+            "success": True,
+            "versions": versions
+        })
+    except Exception as e:
+        add_log("ERROR", f"获取兼容Windows版本失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/server-control/<service_name>/license/windows-sql/compliant', methods=['OPTIONS', 'GET'])
+def get_compliant_windows_sql_versions(service_name):
+    """获取兼容的Windows SQL Server版本"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        versions = client.get(f'/dedicated/server/{service_name}/license/compliantWindowsSqlServer')
+        return jsonify({
+            "success": True,
+            "versions": versions
+        })
+    except Exception as e:
+        add_log("ERROR", f"获取兼容SQL Server版本失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# ==================== Service Termination 终止服务 ====================
+@app.route('/api/server-control/<service_name>/terminate', methods=['OPTIONS', 'POST'])
+def terminate_service(service_name):
+    """终止服务器服务"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        result = client.post(f'/dedicated/server/{service_name}/terminate')
+        add_log("WARNING", f"服务器 {service_name} 终止请求已提交", "server_control")
+        return jsonify({
+            "success": True,
+            "message": "终止请求已提交",
+            "result": result
+        })
+    except Exception as e:
+        add_log("ERROR", f"终止服务失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/server-control/<service_name>/confirm-termination', methods=['OPTIONS', 'POST'])
+def confirm_termination(service_name):
+    """确认终止服务"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    data = request.get_json()
+    token = data.get('token')
+    
+    if not token:
+        return jsonify({"success": False, "error": "缺少token参数"}), 400
+    
+    try:
+        result = client.post(f'/dedicated/server/{service_name}/confirmTermination', token=token)
+        add_log("WARNING", f"服务器 {service_name} 终止已确认", "server_control")
+        return jsonify({
+            "success": True,
+            "message": "终止已确认"
+        })
+    except Exception as e:
+        add_log("ERROR", f"确认终止失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# ==================== SPLA 软件许可证 ====================
+@app.route('/api/server-control/<service_name>/spla', methods=['OPTIONS', 'GET'])
+def get_spla_list(service_name):
+    """获取SPLA许可证列表"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    try:
+        spla_ids = client.get(f'/dedicated/server/{service_name}/spla')
+        spla_list = []
+        for spla_id in spla_ids:
+            try:
+                detail = client.get(f'/dedicated/server/{service_name}/spla/{spla_id}')
+                detail['id'] = spla_id
+                spla_list.append(detail)
+            except:
+                spla_list.append({'id': spla_id})
+        
+        return jsonify({
+            "success": True,
+            "splaList": spla_list
+        })
+    except Exception as e:
+        add_log("ERROR", f"获取SPLA列表失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/server-control/<service_name>/spla', methods=['OPTIONS', 'POST'])
+def create_spla(service_name):
+    """创建SPLA许可证"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    client = get_ovh_client()
+    if not client:
+        return jsonify({"success": False, "error": "未配置OVH API密钥"}), 401
+    
+    data = request.get_json()
+    license_type = data.get('type')
+    serial_number = data.get('serialNumber')
+    
+    if not license_type:
+        return jsonify({"success": False, "error": "缺少type参数"}), 400
+    
+    try:
+        result = client.post(
+            f'/dedicated/server/{service_name}/spla',
+            type=license_type,
+            serialNumber=serial_number
+        )
+        add_log("INFO", f"创建SPLA许可证成功: {license_type}", "server_control")
+        return jsonify({
+            "success": True,
+            "message": "SPLA许可证已创建",
+            "result": result
+        })
+    except Exception as e:
+        add_log("ERROR", f"创建SPLA许可证失败: {str(e)}", "server_control")
+        return jsonify({"success": False, "error": str(e)}), 500
+
 # ==================== VPS 监控相关功能 ====================
 
 # ==================== BIOS 设置 ====================
