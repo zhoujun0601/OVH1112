@@ -12,7 +12,7 @@ API_SECRET_KEY=你的密钥
 ### 2. 启动服务
 
 ```bash
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 ### 3. 访问系统
